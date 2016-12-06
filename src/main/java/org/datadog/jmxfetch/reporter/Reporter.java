@@ -70,7 +70,7 @@ public abstract class Reporter {
             String[] tags = Arrays.asList((String[]) metric.get("tags")).toArray(new String[0]);
 
             // StatsD doesn't support rate metrics so we need to have our own aggregator to compute rates
-            if (!"gauge".equals(metricType)) {
+            if ("counter".equals(metricType)) {
                 String key = generateId(metric);
                 if (!instanceRatesAggregator.containsKey(key)) {
                     HashMap<String, Object> rateInfo = new HashMap<String, Object>();
@@ -87,13 +87,13 @@ public abstract class Reporter {
                 double rate = 1000 * (currentValue - oldValue) / (now - oldTs);
 
                 if (!Double.isNaN(rate) && !Double.isInfinite(rate)) {
-                    sendMetricPoint(metricName, rate, tags);
+                    sendMetricPoint(metricType, metricName, rate, tags);
                 }
 
                 instanceRatesAggregator.get(key).put("ts", now);
                 instanceRatesAggregator.get(key).put(VALUE, currentValue);
-            } else { // The metric is a gauge
-                sendMetricPoint(metricName, currentValue, tags);
+            } else { // The metric is a gauge or histogram
+                sendMetricPoint(metricType, metricName, currentValue, tags);
             }
         }
 
@@ -131,7 +131,7 @@ public abstract class Reporter {
         return StringUtils.join(chunks, ".");
     }
 
-    protected abstract void sendMetricPoint(String metricName, double value, String[] tags);
+    protected abstract void sendMetricPoint(String metricType, String metricName, double value, String[] tags);
 
     protected abstract void doSendServiceCheck(String checkName, String status, String message, String[] tags);
 
