@@ -28,7 +28,7 @@ public abstract class JMXAttribute {
     protected static final String ALIAS = "alias";
     protected static final String METRIC_TYPE = "metric_type";
     private final static Logger LOGGER = Logger.getLogger(JMXAttribute.class.getName());
-    private static final List<String> EXCLUDED_BEAN_PARAMS = Arrays.asList("domain", "domain_regex", "bean_name", "bean", "bean_regex", "attribute");
+    private static final List<String> EXCLUDED_BEAN_PARAMS = Arrays.asList("domain", "domain_regex", "bean_name", "bean", "bean_regex", "attribute", "exclude_tags");
     private static final String FIRST_CAP_PATTERN = "(.)([A-Z][a-z]+)";
     private static final String ALL_CAP_PATTERN = "([a-z0-9])([A-Z])";
     private static final String METRIC_REPLACEMENT = "([^a-zA-Z0-9_.]+)|(^[^a-zA-Z]+)";
@@ -71,6 +71,23 @@ public abstract class JMXAttribute {
 
         this.beanParameters = beanParametersHash;
         this.defaultTagsList = sanitizeParameters(beanParametersList);
+    }
+
+    /**
+     * Remove tags listed in the 'exclude_tags' list from configuration.
+     */
+    private void applyTagsBlackList() {
+        Filter include = this.matchingConf.getInclude();
+        if (include != null) {
+
+            for (String excludedTagName : include.getExcludeTags()) {
+                for (String tag: this.defaultTagsList) {
+                    if (tag.startsWith(excludedTagName + ":")) {
+                        this.defaultTagsList.remove(tag);
+                    }
+                }
+            }
+        }
     }
 
     public static HashMap<String, String> getBeanParametersHash(String beanParametersString) {
@@ -349,6 +366,9 @@ public abstract class JMXAttribute {
 
     public void setMatchingConf(Configuration matchingConf) {
         this.matchingConf = matchingConf;
+
+        // Now that we have the matchingConf, we can filter out excluded tags
+        applyTagsBlackList();
     }
 
     MBeanAttributeInfo getAttribute() {
